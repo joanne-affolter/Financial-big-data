@@ -252,13 +252,13 @@ def plot_response_plot():
         ax.set_xlim([1,1e3])
 
         #Load data
-        trade_files=glob.glob(f"/media/jprado/Elements/data/raw/binanceus/binanceus_{coin}USD/trades/*_{date_pattern}")
+        trade_files=glob.glob(f"data/raw/binanceus/binanceus_{coin}USD/trades/*_{date_pattern}")
         trade_files.sort()
         allpromises=[pd.read_parquet(fn,columns=['time_exchange','taker_side']) for fn in trade_files]
         trades=dask.compute(allpromises)[0]
         trades=pd.concat(trades)
 
-        mob_files = glob.glob(f"/media/jprado/Elements/data/raw/binanceus/binanceus_{coin}USD/mob/*_{date_pattern}")
+        mob_files = glob.glob(f"data/raw/binanceus/binanceus_{coin}USD/mob/*_{date_pattern}")
         mob_files.sort()
         allpromises=[pd.read_parquet(fn,columns=['asks','bids','time_exchange']) for fn in mob_files]
         mob = dask.compute(allpromises)[0]
