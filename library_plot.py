@@ -3,6 +3,7 @@ import seaborn as sns
 import plotly.graph_objects as go
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.distributions.empirical_distribution import ECDF
+import matplotlib.ticker as mtick
 
 import dask
 
@@ -235,4 +236,54 @@ def rank_keywords_index(df) :
     plt.savefig("figures/ranking_keywords_index.png")
 
     plt.show()
+
+
+def plot_response_plot():
+
+    fig, ax = plt.subplots(2,2)
+    fig.supxlabel("Lag [trade counts]")
+    fig.supylabel("Response")
+    def plot_response_curve(coin,max_lags=1000,date_pattern="2021-01-0[1]",ax=ax,color="black"):
+
+        def response_function(events,tau):
+            response = events['s_n']*(np.log(events['midprice']) - np.log(events['midprice']).shift(tau))
+            return response.mean()
+        ax.set_xscale('log')
+        ax.set_xlim([1,1e3])
+
+        #Load data
+        trade_files=glob.glob(f"/media/jprado/Elements/data/raw/binanceus/binanceus_{coin}USD/trades/*_{date_pattern}")
+        trade_files.sort()
+        allpromises=[pd.read_parquet(fn,columns=['time_exchange','taker_side']) for fn in trade_files]
+        trades=dask.compute(allpromises)[0]
+        trades=pd.concat(trades)
+
+        mob_files = glob.glob(f"/media/jprado/Elements/data/raw/binanceus/binanceus_{coin}USD/mob/*_{date_pattern}")
+        mob_files.sort()
+        allpromises=[pd.read_parquet(fn,columns=['asks','bids','time_exchange']) for fn in mob_files]
+        mob = dask.compute(allpromises)[0]
+        mob = pd.concat(mob)
+
+        trades['time_exchange'] = pd.to_datetime(trades['time_exchange'])
+        mob['time_exchange'] = pd.to_datetime(mob['time_exchange'])
+        mob['midprice'] = mob.apply(lambda row : (row['asks'][0]['price'] + row['bids'][0]['price'])/2,axis=1)
+        mob['midprice_vol'] = mob.apply(lambda row : (row['asks'][0]['size'] + row['bids'][0]['size'])/2,axis=1)
+
+        events=pd.concat([trades,mob],join="outer",keys=["time_exchange","time_exchange"]).sort_values('time_exchange').ffill()
+
+        events['s_n'] = events.apply(lambda row : +1 if row['taker_side'] == "BUY" else -1,axis=1)
+
+
+
+        range_x = np.arange(max_lags)
+        response = [response_function(events,k) for k in range_x]
+        ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2e'))
+        ax.plot(range_x, response,label=coin,color=color)
+        ax.legend(loc="best")
+
+    plot_response_curve("BTC",ax=ax[0][0],color="blue")
+    plot_response_curve("ETH",ax=ax[0][1],color="red")
+    plot_response_curve("LTC",ax=ax[1][0],color="black")
+    plot_response_curve("ADA",ax=ax[1][1],color="green")
+    fig.tight_layout()
 
