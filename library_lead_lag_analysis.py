@@ -132,22 +132,28 @@ def aggregate_clusters(C, only_log_likelihood_improving_merges=False):
 
 
 def plot_giada_marsili_clustering(RMT_corrected=True):
+    """
+    This function generates Fig. 20 and 21 of our report.
+    Arugments:
+    RMT_corrected (bool) : True if correlation matrix of networks is cleaned with RMT before clustering"""
     llrs = pd.read_csv("data/clean/lead_lag_graphs/all_graphs.csv",header=None).values
+
+
     if RMT_corrected:
-        correlation_matrix = clipped(llrs) #pyRMT cleaned correlation matrix
+        #pyRMT cleaned correlation matrix
+        correlation_matrix = clipped(llrs) 
     else : 
         correlation_matrix = np.corrcoef(llrs)
+    #Apply clustering from course code.
     clusters = aggregate_clusters(correlation_matrix)
 
     all_clusters = clusters['i_s']
     inverted_clusters = {day: cluster for cluster, days in all_clusters.items() for day in days}
     cluster_reps = list(set(inverted_clusters.values()))
 
-    all_days = sorted(list(set(day for days_list in all_clusters.values() for day in days_list)))
     rows = 12
     columns = 31
     matrix = np.full((rows, columns), np.nan)
-    color_matrix = np.full((rows, columns), np.nan)
 
 
     # Assign cluster colors to the matrix
@@ -160,7 +166,7 @@ def plot_giada_marsili_clustering(RMT_corrected=True):
         matrix[month, date] = index_dict.get(inverted_clusters.get(day, np.nan), np.nan)  # Adjust day + 1 to start from 1
 
     # Create a figure with 7 columns
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
 
     # Create a mask for non-NaN values
     mask = np.isnan(matrix)
@@ -205,6 +211,7 @@ def plot_giada_marsili_clustering(RMT_corrected=True):
 
 
 def empirical_cdf(x, data, bins=100):
+    """Generates an empirical cdf of the data, used to calculate p-values from a null-model."""
     hist, bin_edges = np.histogram(data, bins=bins, density=True)
     cdf = np.cumsum(hist * np.diff(bin_edges))
     
@@ -214,6 +221,7 @@ def empirical_cdf(x, data, bins=100):
     return cdf_at_x
 
 def remove_outliers(data):
+    """Clips the distribution in quantiles 1% and 99% to avoid artifacts in the LLR calculation."""
     q1 = data.quantile(0.01)
     q3 = data.quantile(0.99)
     iqr = q3 - q1
@@ -224,7 +232,8 @@ def remove_outliers(data):
 
 
 def llr_plot(df_result, date, threshold):
-
+    """This function generates Fig. 19 of our report."""
+    #Class to have a polygon with rounded corners in matplotlib. Code originally from scleronomic in https://stackoverflow.com/questions/19270673/matplotlib-radius-in-polygon-edges-is-it-possible
     class RoundedPolygon(patches.PathPatch):
         def __init__(self, xy, pad, **kwargs):
             p = path.Path(*self.__round(xy=xy, pad=pad))
@@ -255,9 +264,8 @@ def llr_plot(df_result, date, threshold):
 
 
     test = {}
-    #display(df_result)
     row = df_result.loc[date]
-    # Loop through the columns and extract nodeX, nodeY, and the corresponding llrs value
+    # Loop through the columns and extract nodeX, nodeY, and the corresponding llrs value, to plot directed edges
     for column in df_result.columns:
         if 'llr_' in column:
             if 'keyword' in column:
@@ -276,25 +284,31 @@ def llr_plot(df_result, date, threshold):
                 llrs_value = row[column]
             if nodeX not in test:
                 test[nodeX] = {}
-            # Add the value to the result_df at the corresponding position
             test[nodeX][nodeY] = llrs_value
 
-    # If needed, convert the DataFrame indices and columns to integers or other appropriate types
     G = nx.DiGraph((k, v, {'weight': weight}) for k, vs in test.items() for v, weight in vs.items())
     adjacency_matrix = nx.to_pandas_adjacency(G).values.flatten()
-    # Function to filter edges based on weight
+
     # Graph nodes
-    ADA_nodes = ['binanceADA','Cardano']
-    BTC_nodes = ['binanceBTC', 'bitstampBTC','btc']
-    ETH_nodes = ['binanceETH','bitstampETH','Ethereum']
-    LTC_nodes = ['binanceLTC','bitstampLTC','Litecoin']
+    ADA_nodes = ['binanceADA']
+    ADA_keyword_nodes = ['Cardano']
+    BTC_nodes = ['binanceBTC', 'bitstampBTC']
+    BTC_keyword_nodes = ['btc']
+    ETH_nodes = ['binanceETH','bitstampETH']
+    ETH_keyword_nodes = ['Ethereum']
+    LTC_nodes = ['binanceLTC','bitstampLTC']
+    LTC_keyword_nodes = ['Litecoin']
     trading_node = ['trading']
     musk_node = ['Musk']
-    #china_node = ['China']
     FED_node = ['FED']
-    node_list = ADA_nodes + BTC_nodes + ETH_nodes + LTC_nodes  + musk_node + FED_node
+    node_list = ADA_nodes + BTC_nodes + ETH_nodes + LTC_nodes  + musk_node + FED_node + ADA_keyword_nodes + BTC_keyword_nodes + ETH_keyword_nodes + LTC_keyword_nodes
 
     def filter_edges(graph,threshold, all_keywords=False):
+        """This function filters out edges that are not statistically significant
+        Arguments:
+        graph (nx.Graph) : the graph that will have edges removed
+        threshold (float) : The p-value that is the threshold for statistical significant edges
+        all_keywords (bool) : True if edges coming from statistically not significant keywords should also be filtered. False if only statistically significant keywords should be kept."""
         filtered_edges = []
         for edge in graph.edges(data=True):
             source, target, data = edge
@@ -311,16 +325,13 @@ def llr_plot(df_result, date, threshold):
     filtered_edges = sorted(filter_edges(G,threshold), key=lambda x: x[2]['weight'], reverse=True)
     rcParams['font.size']
 
-    # Create a new graph with only the edges with the maximum weight
+    #Generate a new graph with the filtered edge list.
     G2 = nx.DiGraph()
     G2.add_edges_from(filtered_edges)
-    #nodes_to_contract = [node for node in G.nodes if '_' in node]
-    #G = nx.contracted_nodes(G, *nodes_to_contract)
+
     pos = graphviz_layout(G2,prog='twopi')
 
-
-
-
+    #Node positions in the plot.
     pos = {'binanceETH': (0,2), 
         'binanceLTC': (1,0), 
         'binanceADA': (-1,0),
@@ -336,38 +347,33 @@ def llr_plot(df_result, date, threshold):
         'trading' : (0,4),
         'FED' : (1,4)}
 
-    nodes1 = nx.draw_networkx_nodes(G2, pos, nodelist=ADA_nodes,label='ADA', node_color='#33a02c',node_size=15**2)
-    nodes2 = nx.draw_networkx_nodes(G2, pos, nodelist=BTC_nodes,label='BTC', node_color='#1f78b4', node_size=15**2)
-    nodes3 = nx.draw_networkx_nodes(G2, pos, nodelist=ETH_nodes,label='ETH', node_color='#e31a1c', node_size=15**2)
-    nodes4 = nx.draw_networkx_nodes(G2, pos, nodelist=LTC_nodes,label='LTC', node_color='#6a3d9a', node_size=15**2)
-    nodes5 = nx.draw_networkx_nodes(G2, pos, nodelist=musk_node,label='Musk', node_shape = 's', node_color='#525252', node_size=15**2)
-    nodes6 = nx.draw_networkx_nodes(G2, pos, nodelist=trading_node,label='trading', node_shape = 's', node_color='#737373', node_size=15**2)
-
-    #nodes7 = nx.draw_networkx_nodes(G2, pos, nodelist=china_node,label='China', node_color='#bcbddc', node_size=15**2)
-    nodes8 = nx.draw_networkx_nodes(G2, pos, nodelist=FED_node,label='FED', node_shape = 's', linewidths=1,node_color='#bdbdbd', node_size=15**2)
-    #nodes9 = nx.draw_networkx_nodes(G2, pos, nodelist=binance_node,label='Binance', node_color='#efedf5', node_size=15**2)
-    #nx.draw_networkx_labels(G2,pos,{'Binance':'B','FED':'F','crypto':'C','Musk':'M','trading':'T','China':'C'},font_color='white')
+    #Create legend handles to label nodes correctly. 
+    nodes_handle1 = nx.draw_networkx_nodes(G2, pos, nodelist=ADA_nodes,label='ADA coin', node_color='#33a02c',node_size=15**2)
+    ADA_keyword_nodes = nx.draw_networkx_nodes(G2, pos, nodelist=ADA_keyword_nodes,label='Cardano keyword', node_shape = 's', node_color='#33a02c',node_size=15**2)
+    nodes_handle2 = nx.draw_networkx_nodes(G2, pos, nodelist=BTC_nodes,label='BTC coin', node_color='#1f78b4', node_size=15**2)
+    BTC_keyword_nodes = nx.draw_networkx_nodes(G2, pos, nodelist=BTC_keyword_nodes,label='BTC keyword', node_shape = 's', node_color='#1f78b4', node_size=15**2)
+    nodes_handle3 = nx.draw_networkx_nodes(G2, pos, nodelist=ETH_nodes,label='ETH coin', node_color='#e31a1c', node_size=15**2)
+    ETH_keyword_nodes = nx.draw_networkx_nodes(G2, pos, nodelist=ETH_keyword_nodes,label='Ethereum keyword', node_shape = 's', node_color='#e31a1c', node_size=15**2)
+    nodes_handle4 = nx.draw_networkx_nodes(G2, pos, nodelist=LTC_nodes,label='LTC coin', node_color='#6a3d9a', node_size=15**2)
+    LTC_keyword_nodes = nx.draw_networkx_nodes(G2, pos, nodelist=LTC_keyword_nodes,label='Litecoin keyword',  node_shape = 's', node_color='#6a3d9a', node_size=15**2)
+    nodes_handle5 = nx.draw_networkx_nodes(G2, pos, nodelist=musk_node,label='Musk keyword', node_shape = 's', node_color='#525252', node_size=15**2)
+    nodes_handle6 = nx.draw_networkx_nodes(G2, pos, nodelist=trading_node,label='trading keyword', node_shape = 's', node_color='#737373', node_size=15**2)
+    nodes_handle7 = nx.draw_networkx_nodes(G2, pos, nodelist=FED_node,label='FED keyword', node_shape = 's', linewidths=1,node_color='#bdbdbd', node_size=15**2)
     weights = np.array(list(nx.get_edge_attributes(G,'weight').values()))
 
-    # Assign positions for binance and bitstamp nodes
+    #Position of nodes in the plot.
     binance_vertices = np.array([[-1.5, 2.4], [1.5, 2.4], [1.5, -2.4], [-1.5, -2.4]])
     bitstamp_vertices = np.array([[1.6, 2.4], [2.4, 2.4], [2.4, -2.4], [1.6, -2.4]])
     GT_vertices = np.array([[-1.5, 4.4], [2.4, 4.4], [2.4, 2.5], [-1.5, 2.5]])
 
-    # Create a Polygon patch
+    #Position of patches corresponding to exchanges and Google Trends in the plot.
     binance_patch = RoundedPolygon(xy=binance_vertices, pad= 0.3, facecolor='white', edgecolor='black', linestyle='-',  linewidth=2,joinstyle='round', alpha=1)
     bitstamp_patch = RoundedPolygon(xy=bitstamp_vertices, pad= 0.3, facecolor='white', edgecolor='black', linestyle='-',  linewidth=2,joinstyle='round', alpha=0.7)
     GT_patch = RoundedPolygon(xy=GT_vertices, pad= 0.3, facecolor='white', edgecolor='black', linestyle='-',  linewidth=2,joinstyle='round', alpha=0.4)
-    # Plot the graph
-    # labels = nx.get_edge_attributes(G, 'weight')
-    # nx.draw_networkx_edge_labels(G, pos)
-    # plt.tight_layout()
+    
+    #Plot configs.
     plt.axis("off")
-
-
-    # Display the plot
-    plt.legend(handles=[nodes1,nodes2,nodes3,nodes4, nodes5, nodes6, nodes8], loc="lower left",bbox_to_anchor=(0.99,0))
-    #plt.close()
+    plt.legend(handles=[nodes_handle1,nodes_handle2,nodes_handle3,nodes_handle4, nodes_handle5, nodes_handle6, nodes_handle7, ADA_keyword_nodes, BTC_keyword_nodes,ETH_keyword_nodes,LTC_keyword_nodes], loc="lower left",bbox_to_anchor=(1.05,0))
     plt.gca().add_patch(binance_patch)
     plt.gca().add_patch(bitstamp_patch)
     plt.gca().add_patch(GT_patch)
@@ -383,6 +389,7 @@ def llr_plot(df_result, date, threshold):
     plt.show()
 
     def degrees_to_dataframe_row(graph):
+        """This function is used to calculate centrality metrics of the graph for Table 7 in the report."""
         data = {}
         
         for node in graph.nodes:
@@ -397,6 +404,8 @@ def llr_plot(df_result, date, threshold):
     return adjacency_matrix, filtered_edges, node_list, degrees_to_dataframe_row(G2)
 
 def longest_running_link(array):
+    """This function is used to calculate lead-lag metrics of the graph for Table 7 in the report."""
+
     max_len = 0
     current_len = 0
     index = 0
@@ -414,33 +423,22 @@ def longest_running_link(array):
 
 
 def fetch_lead_lag_ratios():
+    """This function fetches an intermediary result to avoid duplicate computations : we save lead_lag_ratios of all 365 daily networks as vectors in order to compute their correlation and perform clustering."""
 
     directory = "data/clean/lead_lag_ratios"
     empirical_distribution_null_model = pd.read_csv(os.path.join(directory,"null_model.csv"))
-
     files = os.listdir(directory)
-    # Filter files that correspond to lead-lag-ratios.
     llrs_files = [file for file in files if file.endswith('.csv') and 'null_model' not in file]
-
-    # Read the first CSV file to initialize the DataFrame
     df_result = pd.read_csv(os.path.join(directory,llrs_files[0]), index_col='date')
     df_result.rename(lambda x : x + "_"+ os.path.splitext(llrs_files[0])[0],inplace=True,axis=1)
-    # Loop through the remaining files and join them on the index
     for file in llrs_files[1:]:
         df_temp = pd.read_csv(os.path.join(directory,file), index_col='date')
         df_temp.rename(lambda x : x + "_"+ os.path.splitext(file)[0],inplace=True,axis=1)
         df_result = df_result.join(df_temp)
 
     llr_columns = [col for col in df_result.columns if col.startswith('llr')]
-
-
-
-    # Extract the relevant subset of the DataFrame
     llr_df = df_result[llr_columns]
     flattened_data = pd.Series(llr_df.values.flatten())
-
-
-    # Remove outliers
     filtered_llrs = remove_outliers(flattened_data)
     statistically_significant_llr = np.array([llr for llr in filtered_llrs if multipletests(1 - empirical_cdf(llr, empirical_distribution_null_model['LLR'].values))[0]])
     minimum_statistically_significant_llr = np.min(statistically_significant_llr)
