@@ -204,6 +204,7 @@ def plot_giada_marsili_clustering(RMT_corrected=True):
     # Show the plot
     plt.show()
 
+    plt.savefig(f"figures/clustering.png")
 
 
 
@@ -385,7 +386,7 @@ def llr_plot(df_result, date, threshold):
     plt.ylim([-2.5,4.5])
     plt.xlim([-4,2.5])
     plt.tight_layout()
-    plt.savefig(f"plots/lead_lag_graph_{date}")
+    plt.savefig(f"figures/lead_lag_graph_{date}")
     plt.show()
 
     def degrees_to_dataframe_row(graph):
