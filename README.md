@@ -15,7 +15,6 @@ Cryptocurrency markets are highly dynamic and volatile. They are characterized n
 
 This study examines how market sentiment fluctuations influence changes in currency quotes across different cryptocurrency exchanges, focusing on Bitcoin. We collect tick-by-tick trade data and second-resolution market order book data from Binance and Bitstamp throughout Jan 2021 - Dec 2021 and employ Google Trends search indexes for crypto keywords as proxies. The analysis unfolds in three stages: (i) validating our chosen proxy as an explanatory variable for cryptocurrency price changes using transfer entropy as a measure of information flow, (ii) checking the validity of traditional stylized facts in the crypto case and their variations across both exchanges, and (iii) scrutinizing the time-evolution of the induced lead-lag correlation throughout the studied period.
 
----------------------------------------------------------
 ## Repository Structure
 
 ### Library 
@@ -44,7 +43,6 @@ The code for execution is available in the following two notebooks, structured i
 - **`/figures`** : All figures used in the report. 
 - **`requirements.txt`** : Library requirements. 
 
----------------------------------------------------------------
 ## Data 
 
 The project's data is accessible on our Drive via the provided links. Note that the notebooks can be executed using the reduced dataset. We recommend doing so, as the full dataset is substantial in size.
@@ -52,7 +50,7 @@ The project's data is accessible on our Drive via the provided links. Note that 
 - **Full data** : https://drive.google.com/drive/folders/1xTW6vvD-P_1pFwnT6bjecPkGabaqQ9Eb?usp=drive_link
 - **Reduced data** : https://drive.google.com/drive/folders/10dJ2EkOrJz4WAlT8CxxwTPr3V7r1Z41Y?usp=drive_link
 
--------------------------------------------
+
 
 ## Reproducing our Results
 
