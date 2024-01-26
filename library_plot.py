@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import seaborn as sns
 import plotly.graph_objects as go
 from statsmodels.graphics.tsaplots import plot_acf
@@ -359,7 +360,7 @@ def plot_volatility(btc_df, eth_df, ada_df, ltc_df, time_window) :
 
     plt.show()
 
-def plot_response_plot():
+def plot_response_plot(data_dir):
     """_summary_
 
     :return: _description_
@@ -369,7 +370,7 @@ def plot_response_plot():
     fig, ax = plt.subplots(2,2)
     fig.supxlabel("Lag [trade counts]")
     fig.supylabel("Response")
-    def plot_response_curve(coin,max_lags=1000,date_pattern="2021-01-0[1]",ax=ax,color="black"):
+    def plot_response_curve(data_dir,coin,max_lags=1000,date_pattern="2021-01-0[1]",ax=ax,color="black"):
         """_summary_
 
         :param coin: _description_
@@ -391,13 +392,13 @@ def plot_response_plot():
         ax.set_xlim([1,1e3])
 
         #Load data
-        trade_files=glob.glob(f"data/raw/binanceus/binanceus_{coin}USD/trades/*_{date_pattern}")
+        trade_files=glob.glob(data_dir + f"binanceus/binanceus_{coin}USD/trades/*_{date_pattern}")
         trade_files.sort()
         allpromises=[pd.read_parquet(fn,columns=['time_exchange','taker_side']) for fn in trade_files]
         trades=dask.compute(allpromises)[0]
         trades=pd.concat(trades)
 
-        mob_files = glob.glob(f"data/raw/binanceus/binanceus_{coin}USD/mob/*_{date_pattern}")
+        mob_files = glob.glob(data_dir + f"binanceus/binanceus_{coin}USD/mob/*_{date_pattern}")
         mob_files.sort()
         allpromises=[pd.read_parquet(fn,columns=['asks','bids','time_exchange']) for fn in mob_files]
         mob = dask.compute(allpromises)[0]
@@ -418,8 +419,8 @@ def plot_response_plot():
         ax.plot(range_x, response,label=coin,color=color)
         ax.legend(loc="best")
 
-    plot_response_curve("BTC",ax=ax[0][0],color="blue")
-    plot_response_curve("ETH",ax=ax[0][1],color="red")
-    plot_response_curve("LTC",ax=ax[1][0],color="black")
-    plot_response_curve("ADA",ax=ax[1][1],color="green")
+    plot_response_curve(data_dir,"BTC",ax=ax[0][0],color="blue")
+    plot_response_curve(data_dir,"ETH",ax=ax[0][1],color="red")
+    plot_response_curve(data_dir,"LTC",ax=ax[1][0],color="black")
+    plot_response_curve(data_dir,"ADA",ax=ax[1][1],color="green")
     fig.tight_layout()
