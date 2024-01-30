@@ -423,8 +423,6 @@ def llr_plot(df_result, date, threshold):
     G2 = nx.DiGraph()
     G2.add_edges_from(filtered_edges)
 
-    pos = graphviz_layout(G2,prog='twopi')
-
     #Node positions in the plot.
     pos = {'binanceETH': (0,2), 
         'binanceLTC': (1,0), 
