@@ -8,7 +8,6 @@ import seaborn as sns
 from idtxl.multivariate_te import MultivariateTE
 from idtxl.bivariate_te import BivariateTE
 from idtxl.data import Data
-from idtxl.estimators_python import PythonKraskovCMI
 from idtxl import idtxl_io as io
 from idtxl.visualise_graph import plot_network, plot_selected_vars
 

@@ -5,6 +5,8 @@ import pandas as pd
 from datetime import datetime,timedelta
 from statsmodels.stats.multitest import multipletests
 import networkx as nx
+import lead_lag
+from glob import glob
 from matplotlib import rcParams
 from networkx.drawing.nx_pydot import graphviz_layout
 from matplotlib.patches import Polygon
@@ -12,6 +14,97 @@ from matplotlib import patches, path, pyplot as plt
 import seaborn as sns
 from matplotlib.lines import Line2D
 from library_pyRMT import clipped
+
+
+
+def calculate_llr(trade_dir_path, directory_path2,date,min_precision=0.1):
+    """Calculates Lead Lag Ratios between two times series of log returns
+    trade_dir_path (string) : path to time series 1
+    trade_dir_path2 (string) : path to time series 2
+    date : date of time series to consider
+    min_precision (float) : minimum time resolution of lead-lag calculation  """
+    file_key1 = os.path.join(trade_dir_path, f"*{date}*.parquet")
+    matching_files1 = glob(file_key1) 
+    file_key2 = os.path.join(directory_path2, f"*{date}*.parquet")
+    matching_files2 = glob(file_key2)
+    df_1 = pd.read_parquet(matching_files1,columns=['time_exchange','log_returns'])
+    df_2 = pd.read_parquet(matching_files2,columns=['time_exchange','log_returns'])
+    df_1['time_exchange'] = pd.to_datetime(df_1['time_exchange'])
+    df_2['time_exchange'] = pd.to_datetime(df_2['time_exchange'])
+
+    timeseries1 = df_1.dropna().groupby('time_exchange').sum().round(16)
+    timeseries2 = df_2.dropna().groupby('time_exchange').sum().round(16)
+    ll = lead_lag.LeadLag(
+        verbose=False,
+        ts1=timeseries1['log_returns'],
+        ts2=timeseries2['log_returns'],
+        max_lag=60,  # [-X seconds, +X seconds]
+        min_precision=min_precision # in seconds.
+    )
+
+    ll.run_inference()
+
+    ll_rev =  lead_lag.LeadLag(
+        verbose=False,
+        ts1=timeseries2['log_returns'],
+        ts2=timeseries1['log_returns'],
+        max_lag=60,  # [-X seconds, +X seconds]
+        min_precision=min_precision # in seconds.
+    )
+    ll_rev.run_inference()
+    result = {
+            'date': date,
+            'max_contrast_time' : ll.lag_range[ll.contrasts.argmax()]*min_precision,
+            'max_contrast' : ll.contrasts[ll.contrasts.argmax()],
+            'llr': ll.llr,
+            'max_contrast_time_rev' : ll_rev.lag_range[ll_rev.contrasts.argmax()]*min_precision,
+            'max_contrast_rev' : ll_rev.contrasts[ll_rev.contrasts.argmax()],
+            'llr_rev': ll_rev.llr,
+            }
+    return result
+
+def calculate_llr_google_trends(trade_dir_path, google_trends_series,keyword,date,min_precision=0.1):
+    """Calculates Lead Lag Ratios between a times series of log returns and of google trends data
+    trade_dir_path (string) : path to time series of log returns
+    google_trends_series (string) : path to time series of google trends data
+    keyword (string) : google trends keyword for naming purposes 
+    date : date of the time series for naming purposes
+    min_precision (float) : minimum time resolution of lead-lag calculation  """
+    file_key1 = os.path.join(trade_dir_path, f"*{date}*.parquet")
+    matching_files1 = glob(file_key1) 
+    print(matching_files1)
+    df_1 = pd.read_parquet(matching_files1,columns=['time_exchange','log_returns'])
+    df_1['time_exchange'] = pd.to_datetime(df_1['time_exchange'])
+
+    timeseries1 = df_1.dropna().groupby('time_exchange').sum().round(16)
+    min_precision = 1
+    ll = lead_lag.LeadLag(
+        ts1=timeseries1['log_returns'],
+        ts2=google_trends_series,
+        max_lag=60,  # [-X seconds, +X seconds]
+        min_precision=min_precision # in seconds.
+    )
+
+    ll.run_inference()
+
+    ll_rev =  lead_lag.LeadLag(
+        ts1=google_trends_series,
+        ts2=timeseries1['log_returns'],
+        max_lag=60,  # [-X seconds, +X seconds]
+        min_precision=min_precision, # in seconds
+    )
+    ll_rev.run_inference()
+    result = {
+            'date': date,
+            'max_contrast_time' : ll.lag_range[ll.contrasts.argmax()]*min_precision,
+            'max_contrast' : ll.contrasts[ll.contrasts.argmax()],
+            'llr': ll.llr,
+            'max_contrast_time_rev' : ll_rev.lag_range[ll_rev.contrasts.argmax()]*min_precision,
+            'max_contrast_rev' : ll_rev.contrasts[ll_rev.contrasts.argmax()],
+            'llr_rev': ll_rev.llr,
+            }
+    return result
+
 
 ### Marsili Giada Clustering
 

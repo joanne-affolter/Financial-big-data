@@ -53,10 +53,15 @@ The project's data is accessible on our Drive via the provided links. Note that 
 
 
 ## Reproducing our Results
+Pre-requisites : Conda or MiniConda installation
 
 1. Download this repository from Github (this is the .zip file you received by mail)
-2. Go to the folder of the repository, open a terminal and run the following command 
-    `pip install -r requirements.txt`
+2. Go to the folder of the repository, open a terminal and run the following commands
+
+```
+conda env create -v -f environment.yml
+conda activate financialBigData_PradoAffolter
+```
 3. Download data from the Google Drive link provided above (Reduced data). 
 4. Create a folder named `data` in the root folder and upload there the two directories from step 3 (`clean` and `raw`). The folder structure should look like this. 
 ```
