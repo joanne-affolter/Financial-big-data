@@ -62,8 +62,14 @@ Pre-requisites : Conda or MiniConda installation
 conda env create -v -f environment.yml
 conda activate financialBigData_PradoAffolter
 ```
-3. Download data from the Google Drive link provided above (Reduced data). 
-4. Create a folder named `data` in the root folder and upload there the two directories from step 3 (`clean` and `raw`). The folder structure should look like this. 
+3. Install the IDTxl library for Information Flow inference with Transfer Entropy methods with the following commands:
+```
+git clone https://github.com/pwollstadt/IDTxl.git
+cd IDTxl
+pip install -e .
+```
+4. Download data from the Google Drive link provided above (Reduced data). 
+5. Create a folder named `data` in the root folder and upload there the two directories from step 3 (`clean` and `raw`). The folder structure should look like this. 
 ```
     └── Financial-big-data
         ├── data
@@ -71,5 +77,5 @@ conda activate financialBigData_PradoAffolter
         ├──  ...
         └── IDTxl
 ```
-5. Run the notebook `Results.ipynb`
+6. Run the notebook `Results.ipynb`
 
